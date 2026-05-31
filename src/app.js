@@ -44,24 +44,60 @@ function initTime() {
 }
 
 function setupStaticEventListeners() {
+    // 1. VEHICLE SWITCHER LOGIC
     brandSelect.addEventListener('change', () => {
+        // Step A: Save the current screen parameters to the OUTGOING vehicle profile before switching
+        AppState.saveProfile({
+            network: networkSelect.value,
+            rate: parseFloat(rateInput.value),
+            efficiency: efficiencySelect.value
+        });
+
+        // Step B: Update active vehicle pointers
         const vehiclesDb = getMergedVehicles();
         AppState.vehicleBrand = brandSelect.value;
         AppState.vehicleModel = Object.keys(vehiclesDb[brandSelect.value].models)[0];
-        AppState.save();
+        
+        // Step C: Fetch the saved configurations for the NEWLY selected vehicle
+        const restoredSettings = AppState.getActiveSettings();
+        
+        // Step D: Update internal state tracking
+        AppState.network = restoredSettings.network;
+        AppState.rate = restoredSettings.rate;
+        AppState.efficiency = restoredSettings.efficiency;
+
+        // Step E: Force the UI to physically reflect the restored parameters
+        networkSelect.value = AppState.network;
+        rateInput.value = AppState.rate;
+        efficiencySelect.value = AppState.efficiency;
+
+        // Step F: Rebuild dependent dropdowns (like available speeds) and recalculate
         renderNetworkSpeeds();
         calculateSession();
     });
 
+    // 2. NETWORK SWITCHER LOGIC
     networkSelect.addEventListener('change', () => {
         const networksDb = getMergedNetworks();
         AppState.network = networkSelect.value;
-        rateInput.value = networksDb[networkSelect.value].defaultRate;
-        AppState.save();
+        
+        // Safely pull the default rate for the newly chosen network
+        const safeNetwork = networksDb[AppState.network] || networksDb['home'];
+        AppState.rate = safeNetwork.defaultRate || 13.00;
+        rateInput.value = AppState.rate; // Sync UI
+        
+        // Save these choices immediately to the active vehicle's profile
+        AppState.saveProfile({ 
+            network: AppState.network, 
+            rate: AppState.rate, 
+            efficiency: efficiencySelect.value 
+        });
+        
         renderNetworkSpeeds();
         calculateSession();
     });
 
+    // 3. SLIDER AND INPUT LOGIC
     currentSocInput.addEventListener('input', (e) => {
         if (AppState.isTimerRunning) return;
         sliderCurrent.value = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
@@ -74,8 +110,28 @@ function setupStaticEventListeners() {
         calculateSession();
     });
 
-    rateInput.addEventListener('input', () => { AppState.rate = parseFloat(rateInput.value) || 0; AppState.save(); calculateSession(); });
-    efficiencySelect.addEventListener('change', () => { AppState.efficiency = efficiencySelect.value; AppState.save(); calculateSession(); });
+    // 4. RATE AND EFFICIENCY PROFILE UPDATERS
+    rateInput.addEventListener('input', () => { 
+        AppState.rate = parseFloat(rateInput.value) || 0; 
+        AppState.saveProfile({ 
+            network: networkSelect.value, 
+            rate: AppState.rate, 
+            efficiency: efficiencySelect.value 
+        });
+        calculateSession(); 
+    });
+
+    efficiencySelect.addEventListener('change', () => { 
+        AppState.efficiency = efficiencySelect.value; 
+        AppState.saveProfile({ 
+            network: networkSelect.value, 
+            rate: parseFloat(rateInput.value), 
+            efficiency: AppState.efficiency 
+        });
+        calculateSession(); 
+    });
+
+    // 5. STANDARD RECALCULATION TRIGGERS
     chargerSpeedSelect.addEventListener('change', () => calculateSession());
     plugTimeInput.addEventListener('input', () => calculateSession());
 }
