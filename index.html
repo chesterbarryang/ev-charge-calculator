@@ -177,6 +177,7 @@
         let targetTotalSecondsLeft = 0;
         let isTimerRunning = false;
 
+        // Updated Charger Profile Configuration mapping real VF 3 DC limitations
         const chargerProfiles = {
             jetour: [
                 { value: "3.3", text: "3.3 kW Portable AC" },
@@ -185,10 +186,8 @@
                 { value: "50.0", text: "50.0 kW Public DC Fast Charger" }
             ],
             vinfast: [
-                { value: "1.4", text: "1.4 kW Household Outlet" },
-                { value: "2.0", text: "2.0 kW Enhanced Home Outlet" },
-                { value: "3.5", text: "3.5 kW VinFast Portable AC", selected: true },
-                { value: "7.4", text: "7.4 kW Home Single-Phase Wallbox" }
+                { value: "3.0", text: "3.0 kW VinFast Home DC Charger", selected: true },
+                { value: "30.0", text: "30.0 kW Public DC Fast Station" }
             ]
         };
 
@@ -215,12 +214,15 @@
             
             if (chosenVehicle === 'jetour') {
                 batteryCapacity = 26.7;
+                efficiencySelect.value = "1.10"; // Default back to standard AC loss profile
                 if (!localStorage.getItem('ev_saved_rate')) rateInput.value = "28.5"; 
             } else {
-                batteryCapacity = 18.64; 
+                batteryCapacity = 18.64; // VinFast VF 3 Pack Sizing
+                efficiencySelect.value = "1.05"; // Direct-to-DC connection cuts conversion losses down to ~5%
                 if (!localStorage.getItem('ev_saved_rate')) rateInput.value = "13.0"; 
             }
-
+        
+            // Repopulate options dynamically
             chargerTypeSelect.innerHTML = '';
             chargerProfiles[chosenVehicle].forEach(profile => {
                 const opt = document.createElement('option');
@@ -229,7 +231,7 @@
                 if (profile.selected) opt.selected = true;
                 chargerTypeSelect.appendChild(opt);
             });
-
+        
             if (shouldTriggerRecalc) {
                 saveConfiguration();
                 calculate();
