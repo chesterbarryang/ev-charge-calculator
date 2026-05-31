@@ -26,6 +26,7 @@ export function getMergedNetworks() {
     
     try {
         const parsedCustom = JSON.parse(customData);
+        // Cleanly combines baseline profiles with user-created independent networks
         return { ...BASELINE_NETWORKS, ...parsedCustom };
     } catch (e) {
         console.error("Custom infrastructure registry parsing error, rolling back.", e);
