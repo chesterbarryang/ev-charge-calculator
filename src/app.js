@@ -170,7 +170,14 @@ function renderNetworkSpeeds() {
 function calculateSession() {
     if (AppState.isTimerRunning) return;
 
-    const currentSoc = parseFloat(currentSocInput.value) || 0;
+    // Inside calculateSession()
+    const networksDb = getMergedNetworks();
+    const networkData = networksDb[AppState.network];
+    
+    // Automatically select rate based on station outlet type (AC vs DC)
+    const activeRate = networkData.typeRates[chargerType] || networkData.typeRates.AC; 
+    rateInput.value = activeRate; // Optional: update the UI input so the user sees the auto-switch
+    const rate = activeRate;
     const selectedOption = chargerSpeedSelect.options[chargerSpeedSelect.selectedIndex];
     const chargerSpeed = parseFloat(chargerSpeedSelect.value) || 3.5;
     const chargerType = selectedOption ? selectedOption.dataset.type : "AC";
