@@ -97,18 +97,25 @@ function renderVehicleDropdown() {
 window.setMode = function(mode) {
     if (AppState.isTimerRunning) return;
     AppState.mode = mode;
+    
+    // UI Visual Toggles
     document.getElementById('btn-soc').className = mode === 'soc' ? "flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold transition" : "flex-1 py-2 text-sm rounded-lg text-slate-400 transition";
     document.getElementById('btn-budget').className = mode === 'budget' ? "flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold transition" : "flex-1 py-2 text-sm rounded-lg text-slate-400 transition";
     
+    const activeTargetInput = document.getElementById('target-value');
+    const activeSliderTarget = document.getElementById('slider-target');
+
     if(mode === 'soc') {
         targetInputLabel.textContent = "Target SoC (%)";
-        targetValueInput.value = AppState.targetSoc;
-        sliderTarget.classList.remove('hidden');
-        sliderTarget.value = AppState.targetSoc;
+        activeTargetInput.value = AppState.targetSoc;
+        activeSliderTarget.min = 0;
+        activeSliderTarget.max = 100;
+        activeSliderTarget.value = AppState.targetSoc;
+        activeSliderTarget.classList.remove('hidden'); // Show slider for SoC
     } else {
         targetInputLabel.textContent = "Target Budget (₱)";
-        targetValueInput.value = AppState.targetBudget;
-        sliderTarget.classList.add('hidden');
+        activeTargetInput.value = AppState.targetBudget;
+        activeSliderTarget.classList.add('hidden'); // HIDE slider for Budget (Original Design)
     }
     calculateSession();
 };
