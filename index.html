@@ -84,7 +84,7 @@
         document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
 
         if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('./sw.js')
+          navigator.serviceWorker.register('/ev-charge-calculator/sw.js')
               .then(() => console.log('Service Worker Registered'));
         }
     </script>
