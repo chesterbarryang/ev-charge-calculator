@@ -177,29 +177,44 @@ function renderNetworkSpeeds() {
 function calculateSession() {
     if (AppState.isTimerRunning) return;
 
+    // 1. Data Retrieval
     const currentSoc = parseFloat(currentSocInput.value) || 0;
     const selectedOption = chargerSpeedSelect.options[chargerSpeedSelect.selectedIndex];
     const chargerSpeed = parseFloat(chargerSpeedSelect.value) || 3.5;
     const chargerType = selectedOption ? selectedOption.dataset.type : "AC";
     
+    // 2. Defensive Lookup: Get Merged DB and Validate
     const vehiclesDb = getMergedVehicles();
-    const activeVehicle = vehiclesDb[AppState.vehicleBrand].models[AppState.vehicleModel];
-    // Inside calculateSession()
     const networksDb = getMergedNetworks();
-    const networkData = networksDb[AppState.network];
     
-    // Automatically select rate based on station outlet type (AC vs DC)
-    const activeRate = networkData.typeRates[chargerType] || networkData.typeRates.AC; 
-    rateInput.value = activeRate; // Optional: update the UI input so the user sees the auto-switch
+    // Safety check for active vehicle
+    const activeVehicle = vehiclesDb[AppState.vehicleBrand]?.models[AppState.vehicleModel] 
+                          || { capacityKwh: 26.7, name: "Unknown" };
+
+    // Safety check for network
+    const networkData = networksDb[AppState.network];
+    const safeNetwork = networkData || networksDb['home']; // Fallback to 'home' if network undefined
+
+    // 3. Robust Rate Calculation
+    // Safely verify typeRates exists before accessing it
+    let activeRate = 13.00;
+    if (safeNetwork.typeRates) {
+        activeRate = safeNetwork.typeRates[chargerType] || safeNetwork.typeRates.AC || safeNetwork.defaultRate || 13.00;
+    } else if (safeNetwork.defaultRate) {
+        activeRate = safeNetwork.defaultRate;
+    }
+
     const rate = activeRate;
-    const lossMultiplier = parseFloat(efficiencySelect.value);
+    rateInput.value = rate; // Visual sync
+    const lossMultiplier = parseFloat(efficiencySelect.value) || 1.10;
     const targetVal = parseFloat(targetValueInput.value) || 0;
 
+    // 4. UI Reset State
     errorMsg.classList.add('hidden');
-    btnTimerToggle.className = "w-full bg-emerald-500 text-slate-950 font-bold text-sm p-3.5 rounded-xl cursor-pointer hover:bg-emerald-400 transition";
     btnTimerToggle.disabled = false;
-    btnTimerToggle.textContent = "⏱️ Start Session Alarm Clock";
+    btnTimerToggle.className = "w-full bg-emerald-500 text-slate-950 font-bold text-sm p-3.5 rounded-xl cursor-pointer hover:bg-emerald-400 transition";
 
+    // 5. Logic Execution via Utility Engine
     if (AppState.mode === 'soc' && targetVal <= currentSoc) {
         errorMsg.classList.remove('hidden');
         resetOutputs();
@@ -217,42 +232,42 @@ function calculateSession() {
         isDcConnection: (chargerType === "DC")
     });
 
+    // 6. Output Rendering
     labelCostOrSoc.textContent = AppState.mode === 'soc' ? "Total Session Cost" : "Calculated Target SoC";
     if (cappedCost !== null) {
-        labelCostOrSoc.innerHTML = `Target SoC <span class="text-xs text-rose-400 block font-normal">(Capped at 100% Full, Spend: ₱${cappedCost.toFixed(2)})</span>`;
+        labelCostOrSoc.innerHTML = `Target SoC <span class="text-xs text-rose-400 block font-normal">(Capped at 100%, Cost: ₱${cappedCost.toFixed(2)})</span>`;
     }
 
     resultEnergy.innerHTML = `${netEnergy.toFixed(2)} <span class="text-xs font-normal text-slate-400">kWh</span>`;
     resultCostOrSoc.textContent = costOrSocText;
 
+    // 7. Time/Clock Projection
     const totalMinutes = Math.round(estimatedHours * 60);
     AppState.targetTotalSecondsLeft = totalMinutes * 60;
-
+    
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     resultTime.textContent = `${h > 0 ? h + 'h ' : ''}${m}m`;
 
-    const [startHours, startMinutes] = plugTimeInput.value.split(':').map(Number);
+    const [startH, startM] = plugTimeInput.value.split(':').map(Number);
     const targetDate = new Date();
-    targetDate.setHours(startHours);
-    targetDate.setMinutes(startMinutes + totalMinutes);
+    targetDate.setHours(startH, startM + totalMinutes);
     
     let clockH = targetDate.getHours();
     const clockM = targetDate.getMinutes().toString().padStart(2, '0');
     const ampm = clockH >= 12 ? 'PM' : 'AM';
-    clockH = clockH % 12 || 12;
-    resultClock.textContent = `${clockH}:${clockM} ${ampm}`;
+    resultClock.textContent = `${clockH % 12 || 12}:${clockM} ${ampm}`;
 
+    // 8. LFP Banner Logic
     const finalSoCForBanner = AppState.mode === 'soc' ? targetVal : parseFloat(costOrSocText);
     if (finalSoCForBanner >= 100) {
         lfpBanner.className = "text-xs rounded-xl p-3 border font-medium bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
-        lfpBanner.textContent = `✓ ${activeVehicle.name} Compliant: Regular 100% saturation calibrates your pack cells and keeps the BMS accurate.`;
+        lfpBanner.textContent = `✓ ${activeVehicle.name} Compliant: Full saturation keeps the BMS accurate.`;
     } else {
         lfpBanner.className = "text-xs rounded-xl p-3 border font-medium bg-amber-500/10 border-amber-500/20 text-amber-400";
-        lfpBanner.textContent = `ℹ LFP Tip: Topping off to ${finalSoCForBanner.toFixed(0)}%. Ensure you charge to 100% at least once a week to prevent cell variance.`;
+        lfpBanner.textContent = `ℹ LFP Tip: Topping off to ${finalSoCForBanner.toFixed(0)}%. Charge to 100% weekly to prevent cell variance.`;
     }
 }
-
 window.toggleActiveTimer = function() {
     if (AppState.isTimerRunning) {
         clearInterval(timerCountdownInterval);
