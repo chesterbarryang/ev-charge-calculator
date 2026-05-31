@@ -161,22 +161,34 @@
 
             <hr class="border-slate-800">
 
+            <!-- Form Section B: Register an Independent Charging Company Network -->
             <div class="space-y-3">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Register Custom Terminal Output</h3>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Register Independent Charging Company</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="m-net-name" placeholder="Company (e.g. Shell Recharge)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
+                    <input type="number" id="m-net-rate" step="0.1" placeholder="Rate (PHP / kWh)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
+                </div>
+                <button onclick="commitCustomNetworkCompany()" class="w-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold p-2 rounded-xl hover:bg-emerald-500/20 transition cursor-pointer">Create Network Profile</button>
+            </div>
+    
+            <hr class="border-slate-800">
+    
+            <!-- Form Section C: Register Terminal Speed to any Company -->
+            <div class="space-y-3">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Terminal Speed to Company</h3>
                 <select id="m-net-target" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl p-2.5 w-full outline-none focus:border-emerald-500">
-                    <option value="home">Add to Home Base Profile</option>
-                    <option value="evro">Add to EVro Commercial Network</option>
+                    <!-- Injected dynamically via JavaScript to reflect latest additions -->
                 </select>
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="m-speed-label" placeholder="Label (e.g. Shell Ultra)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
-                    <input type="number" id="m-speed-kw" step="0.1" placeholder="Power Output (kW)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
+                    <input type="text" id="m-speed-label" placeholder="Terminal Name (e.g. Ultra Fast)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
+                    <input type="number" id="m-speed-kw" step="0.1" placeholder="Output Power (kW)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <select id="m-speed-type" class="bg-slate-950 border border-slate-800 text-slate-400 text-xs rounded-xl p-2.5 w-full outline-none focus:border-emerald-500">
-                        <option value="AC">AC Current</option>
-                        <option value="DC">DC Current</option>
+                        <option value="AC">AC Terminal</option>
+                        <option value="DC">DC Terminal</option>
                     </select>
-                    <button onclick="commitCustomSpeedOutlet()" class="w-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold p-2 rounded-xl hover:bg-emerald-500/20 transition cursor-pointer">Save Terminal Speed</button>
+                    <button onclick="commitCustomSpeedOutlet()" class="w-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold p-2 rounded-xl hover:bg-emerald-500/20 transition cursor-pointer">Save Terminal Outlet</button>
                 </div>
             </div>
             
