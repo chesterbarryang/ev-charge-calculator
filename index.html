@@ -51,6 +51,9 @@
 
             <div id="dynamic-target-container" class="space-y-2">
                 </div>
+
+            <div id="lfp-guidance-banner" class="text-xs rounded-xl p-3 border font-medium transition-all duration-300">
+                </div>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
@@ -103,9 +106,15 @@
                 </div>
             </div>
 
-            <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/50 flex flex-col justify-center items-center py-4">
-                <p class="text-xs text-slate-400 font-medium mb-1">Estimated Duration</p>
-                <p id="result-time" class="text-2xl font-black text-slate-100 tracking-tight">--</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/50 flex flex-col justify-center items-center py-3">
+                    <p class="text-xs text-slate-400 font-medium mb-1">Estimated Duration</p>
+                    <p id="result-time" class="text-xl font-bold text-slate-100 tracking-tight">--</p>
+                </div>
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/50 flex flex-col justify-center items-center py-3">
+                    <p class="text-xs text-emerald-400 font-medium mb-1">⏰ Ready At</p>
+                    <p id="result-clock" class="text-xl font-black text-emerald-400 tracking-tight">--</p>
+                </div>
             </div>
         </div>
     </div>
@@ -121,11 +130,13 @@
         const efficiencySelect = document.getElementById('efficiency');
         const dynamicContainer = document.getElementById('dynamic-target-container');
         const errorMsg = document.getElementById('error-msg');
+        const lfpBanner = document.getElementById('lfp-guidance-banner');
 
         const resultEnergy = document.getElementById('result-energy');
         const labelCostOrSoc = document.getElementById('label-cost-or-soc');
         const resultCostOrSoc = document.getElementById('result-cost-or-soc');
         const resultTime = document.getElementById('result-time');
+        const resultClock = document.getElementById('result-clock');
 
         let targetSocValue = 80;
         let budgetAmountValue = 500;
@@ -201,77 +212,87 @@
             element.addEventListener('input', calculate);
         });
 
+        // Item 6: Function to evaluate and update LFP health advice notice
+        function updateLFPMetrics(finalEstimatedSoC) {
+            if (finalEstimatedSoC >= 100) {
+                lfpBanner.className = "text-xs rounded-xl p-3 border font-medium transition-all duration-300 bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
+                lfpBanner.textContent = "✓ LFP Compliant: Regular 100% saturation calibrates your pack cells and keeps the BMS accurate.";
+            } else {
+                lfpBanner.className = "text-xs rounded-xl p-3 border font-medium transition-all duration-300 bg-amber-500/10 border-amber-500/20 text-amber-400";
+                lfpBanner.textContent = "ℹ LFP Tip: You are topping off to " + finalEstimatedSoC.toFixed(0) + "%. Ensure you charge to 100% at least once a week to prevent cell variance.";
+            }
+        }
+
         function calculate() {
             const currentSoc = parseFloat(currentSocInput.value) || 0;
             const chargerSpeed = parseFloat(chargerTypeSelect.value);
             const rate = parseFloat(rateInput.value) || 0;
             const lossMultiplier = parseFloat(efficiencySelect.value);
-        
+
             errorMsg.classList.add('hidden');
-        
+
+            let estimatedHours = 0;
+            let targetSoCResult = currentSoc;
+
             if (currentMode === 'soc') {
                 labelCostOrSoc.textContent = "Total Session Cost";
+                targetSoCResult = targetSocValue;
                 
                 if (targetSocValue <= currentSoc) {
                     errorMsg.classList.remove('hidden');
                     resetOutputs();
+                    updateLFPMetrics(currentSoc);
                     return;
                 }
-        
+
                 const deltaSoC = (targetSocValue - currentSoc) / 100;
                 const netEnergyNeeded = deltaSoC * batteryCapacity;
                 
-                // Calibrate gross energy drawn from dispenser based on overhead choice
                 const totalDispensedEnergy = netEnergyNeeded * lossMultiplier;
-                
-                // Exact commercial match formatting: round or truncate costs to match billing engines
                 const totalCost = Math.round(totalDispensedEnergy * rate * 100) / 100;
-                const totalHours = totalDispensedEnergy / chargerSpeed;
-        
-                renderCalculatedDOM(netEnergyNeeded, `₱${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, totalHours);
-        
+                estimatedHours = totalDispensedEnergy / chargerSpeed;
+
+                renderCalculatedDOM(netEnergyNeeded, `₱${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+
             } else {
                 labelCostOrSoc.textContent = "Calculated Target SoC";
-        
+
                 if (rate <= 0 || budgetAmountValue <= 0) {
                     resetOutputs();
                     resultCostOrSoc.textContent = `${currentSoc}%`;
+                    updateLFPMetrics(currentSoc);
                     return;
                 }
-        
-                // Direct cash reverse mapping mirroring EVro's linear allocation
+
                 const totalDispensedEnergyAllowed = budgetAmountValue / rate;
-                
-                // Account for thermal conversions lowering absolute pack ingestion efficiency
                 const netEnergyToBattery = totalDispensedEnergyAllowed / lossMultiplier;
                 const addedSoCPercent = (netEnergyToBattery / batteryCapacity) * 100;
-                let projectedFinalSoC = currentSoc + addedSoCPercent;
-        
+                targetSoCResult = currentSoc + addedSoCPercent;
+
                 let trueDispensedEnergy = totalDispensedEnergyAllowed;
-                let trueHours = totalDispensedEnergyAllowed / chargerSpeed;
-        
-                if (projectedFinalSoC > 100) {
-                    projectedFinalSoC = 100;
+                estimatedHours = totalDispensedEnergyAllowed / chargerSpeed;
+
+                if (targetSoCResult > 100) {
+                    targetSoCResult = 100;
                     const maxPossibleDelta = (100 - currentSoc) / 100;
                     const maxNetEnergy = maxPossibleDelta * batteryCapacity;
                     
                     trueDispensedEnergy = maxNetEnergy * lossMultiplier;
-                    trueHours = trueDispensedEnergy / chargerSpeed;
+                    estimatedHours = trueDispensedEnergy / chargerSpeed;
                     
                     const actualCappedCost = Math.round(trueDispensedEnergy * rate * 100) / 100;
                     labelCostOrSoc.innerHTML = `Target SoC <span class="text-xs text-rose-400 block font-normal">(Capped at 100% Full, Spend: ₱${actualCappedCost.toFixed(2)})</span>`;
                 }
-        
+
                 const finalNetEnergyAdded = trueDispensedEnergy / lossMultiplier;
-                renderCalculatedDOM(finalNetEnergyAdded, `${projectedFinalSoC.toFixed(1)}%`, trueHours);
+                renderCalculatedDOM(finalNetEnergyAdded, `${targetSoCResult.toFixed(1)}%`);
             }
-        }
 
-        function renderCalculatedDOM(energy, alternateCostSocText, totalHours) {
-            resultEnergy.innerHTML = `${energy.toFixed(2)} <span class="text-xs font-normal text-slate-400">kWh</span>`;
-            resultCostOrSoc.textContent = alternateCostSocText;
+            // Execute Item 6 Guidance Evaluation
+            updateLFPMetrics(targetSoCResult);
 
-            const totalMinutes = Math.round(totalHours * 60);
+            // Execute Item 8 Duration & Clock Generation updates
+            const totalMinutes = Math.round(estimatedHours * 60);
             const hours = Math.floor(totalMinutes / 60);
             const minutes = totalMinutes % 60;
             
@@ -279,12 +300,30 @@
             if (hours > 0) timeString += `${hours}h `;
             timeString += `${minutes}m`;
             resultTime.textContent = timeString;
+
+            // Generate Wall Clock target completion projection time
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + totalMinutes);
+            
+            let clockHours = now.getHours();
+            const clockMinutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = clockHours >= 12 ? 'PM' : 'AM';
+            clockHours = clockHours % 12;
+            clockHours = clockHours ? clockHours : 12; // Handle midnight evaluation (0 -> 12)
+            
+            resultClock.textContent = `${clockHours}:${clockMinutes} ${ampm}`;
+        }
+
+        function renderCalculatedDOM(energy, alternateCostSocText) {
+            resultEnergy.innerHTML = `${energy.toFixed(2)} <span class="text-xs font-normal text-slate-400">kWh</span>`;
+            resultCostOrSoc.textContent = alternateCostSocText;
         }
 
         function resetOutputs() {
             resultEnergy.innerHTML = `-- <span class="text-xs font-normal text-slate-400">kWh</span>`;
             resultCostOrSoc.textContent = `₱ --`;
             resultTime.textContent = `--`;
+            resultClock.textContent = `--`;
         }
 
         setMode('soc');
