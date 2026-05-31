@@ -2,7 +2,7 @@ const BASELINE_NETWORKS = {
     "home": {
         name: "Home Charger Profile",
         isCommercial: false,
-        defaultRate: 13.00,
+        typeRates: { AC: 13.00, DC: 13.00 }, // Default flat home rate
         speeds: [
             { id: "dc_home_mini", powerKw: 3.0, type: "DC", label: "3.0 kW VinFast Home DC" },
             { id: "ac_portable_33", powerKw: 3.3, type: "AC", label: "3.3 kW Portable AC" },
@@ -12,7 +12,8 @@ const BASELINE_NETWORKS = {
     "evro": {
         name: "EVro Network",
         isCommercial: true,
-        defaultRate: 28.50,
+        // Updated to reflect the ₱35 rate for DC charging
+        typeRates: { AC: 28.50, DC: 35.00 },
         speeds: [
             { id: "evro_ac_calibrated", powerKw: 6.81, type: "AC", label: "6.8 kW Real-World AC (EVro)" },
             { id: "evro_dc_fast", powerKw: 50.0, type: "DC", label: "50 kW Public DC Fast Charger" }
