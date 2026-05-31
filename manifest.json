@@ -1,7 +1,7 @@
 {
   "name": "EV Charge Calculator",
   "short_name": "EVChargeCalculator",
-  "start_url": "./index.html",
+  "start_url": "/ev-charge-calculator/index.html",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#10b981",
