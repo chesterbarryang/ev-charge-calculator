@@ -161,12 +161,13 @@
 
             <hr class="border-slate-800">
 
-            <!-- Form Section B: Register an Independent Charging Company Network -->
+            <!-- Form Section B: Updated for Split-Rate Capture -->
             <div class="space-y-3">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Register Independent Charging Company</h3>
+                <input type="text" id="m-net-name" placeholder="Company Name" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 w-full text-xs outline-none focus:border-emerald-500">
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="m-net-name" placeholder="Company (e.g. Shell Recharge)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
-                    <input type="number" id="m-net-rate" step="0.1" placeholder="Rate (PHP / kWh)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
+                    <input type="number" id="m-net-rate-ac" step="0.1" placeholder="AC Rate (₱/kWh)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
+                    <input type="number" id="m-net-rate-dc" step="0.1" placeholder="DC Rate (₱/kWh)" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs outline-none focus:border-emerald-500">
                 </div>
                 <button onclick="commitCustomNetworkCompany()" class="w-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold p-2 rounded-xl hover:bg-emerald-500/20 transition cursor-pointer">Create Network Profile</button>
             </div>
