@@ -1,6 +1,6 @@
 const CACHE_NAME = 'ev-charge-calc-v3'; // Bumped version to force a new cache layer
 const ASSETS = [
-  '/', 
+  './', 
   '/ev-charge-calculator/index.html',
   'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4'
 ];
