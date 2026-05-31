@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-6">
+
+    <div class="max-w-md mx-auto space-y-6">
+        <h1 class="text-xl font-bold text-emerald-400">Jetour T1 i-DM Calculator</h1>
+
+        <div class="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
+            <button id="btn-soc" onclick="setMode('soc')" class="flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold">SoC %</button>
+            <button id="btn-energy" onclick="setMode('energy')" class="flex-1 py-2 text-sm rounded-lg text-slate-400">Energy (kWh)</button>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Current Battery Level (%)</label>
+                <input type="number" id="current-soc" value="20" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm outline-none">
+            </div>
+            <div>
+                <label id="target-label" class="block text-xs text-slate-400 mb-1">Target SoC (%)</label>
+                <input type="number" id="target-val" value="80" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm outline-none">
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Charger Output (kW)</label>
+                <select id="charger-type" class="bg-slate-950 border border-slate-800 rounded-lg w-full p-2 text-sm outline-none">
+                    <option value="3.3">3.3 kW Portable</option>
+                    <option value="6.81" selected>6.8 kW Real-World</option>
+                    <option value="50.0">50.0 kW DC Fast</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Rate (PHP/kWh)</label>
+                    <input type="number" id="rate" value="28.5" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Efficiency (%)</label>
+                    <input type="number" id="efficiency" value="90" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm outline-none">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-6 text-center space-y-2">
+            <p class="text-slate-400 text-sm">Estimated Session</p>
+            <div id="result-text" class="text-3xl font-bold text-emerald-400">--</div>
+            <div id="result-time" class="text-sm text-slate-400">--</div>
+        </div>
+    </div>
+
+    <script>
+        let mode = 'soc';
+        const batteryCapacity = 26.7;
+
+        function setMode(newMode) {
+            mode = newMode;
+            document.getElementById('btn-soc').className = mode === 'soc' ? 'flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold' : 'flex-1 py-2 text-sm rounded-lg text-slate-400';
+            document.getElementById('btn-energy').className = mode === 'energy' ? 'flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold' : 'flex-1 py-2 text-sm rounded-lg text-slate-400';
+            document.getElementById('target-label').textContent = mode === 'soc' ? 'Target SoC (%)' : 'Energy Needed (kWh)';
+            calculate();
+        }
+
+        function calculate() {
+            const currentSoc = parseFloat(document.getElementById('current-soc').value) || 0;
+            const targetVal = parseFloat(document.getElementById('target-val').value) || 0;
+            const chargerSpeed = parseFloat(document.getElementById('charger-type').value);
+            const rate = parseFloat(document.getElementById('rate').value) || 0;
+            const efficiency = (parseFloat(document.getElementById('efficiency').value) || 100) / 100;
+
+            const netEnergy = mode === 'soc' ? ((targetVal - currentSoc) / 100) * batteryCapacity : targetVal;
+            const grossEnergy = netEnergy / efficiency; // Energy drawn from grid
+            
+            const cost = grossEnergy * rate;
+            const hours = grossEnergy / chargerSpeed;
+            
+            document.getElementById('result-text').textContent = `${Math.max(0, netEnergy).toFixed(2)} kWh`;
+            document.getElementById('result-time').textContent = `Cost: ₱${cost.toFixed(2)} | Time: ${Math.max(0, hours * 60).toFixed(0)} mins`;
+        }
+
+        document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js')
+              .then(() => console.log('Service Worker Registered'));
+        }
+    </script>
+</body>
+</html>
