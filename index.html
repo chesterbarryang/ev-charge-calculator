@@ -206,9 +206,9 @@
             const chargerSpeed = parseFloat(chargerTypeSelect.value);
             const rate = parseFloat(rateInput.value) || 0;
             const lossMultiplier = parseFloat(efficiencySelect.value);
-
+        
             errorMsg.classList.add('hidden');
-
+        
             if (currentMode === 'soc') {
                 labelCostOrSoc.textContent = "Total Session Cost";
                 
@@ -217,50 +217,51 @@
                     resetOutputs();
                     return;
                 }
-
+        
                 const deltaSoC = (targetSocValue - currentSoc) / 100;
                 const netEnergyNeeded = deltaSoC * batteryCapacity;
                 
-                // FIXED: Direct calculation using lossMultiplier for all charger speeds
+                // Calibrate gross energy drawn from dispenser based on overhead choice
                 const totalDispensedEnergy = netEnergyNeeded * lossMultiplier;
-                const totalCost = totalDispensedEnergy * rate;
+                
+                // Exact commercial match formatting: round or truncate costs to match billing engines
+                const totalCost = Math.round(totalDispensedEnergy * rate * 100) / 100;
                 const totalHours = totalDispensedEnergy / chargerSpeed;
-
+        
                 renderCalculatedDOM(netEnergyNeeded, `₱${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, totalHours);
-
+        
             } else {
                 labelCostOrSoc.textContent = "Calculated Target SoC";
-
+        
                 if (rate <= 0 || budgetAmountValue <= 0) {
                     resetOutputs();
                     resultCostOrSoc.textContent = `${currentSoc}%`;
                     return;
                 }
-
-                // Reverse calculation math path
+        
+                // Direct cash reverse mapping mirroring EVro's linear allocation
                 const totalDispensedEnergyAllowed = budgetAmountValue / rate;
                 
-                // FIXED: Adjusted back safely using the exact loss multiplier selected
+                // Account for thermal conversions lowering absolute pack ingestion efficiency
                 const netEnergyToBattery = totalDispensedEnergyAllowed / lossMultiplier;
                 const addedSoCPercent = (netEnergyToBattery / batteryCapacity) * 100;
                 let projectedFinalSoC = currentSoc + addedSoCPercent;
-
+        
                 let trueDispensedEnergy = totalDispensedEnergyAllowed;
                 let trueHours = totalDispensedEnergyAllowed / chargerSpeed;
-
+        
                 if (projectedFinalSoC > 100) {
                     projectedFinalSoC = 100;
                     const maxPossibleDelta = (100 - currentSoc) / 100;
                     const maxNetEnergy = maxPossibleDelta * batteryCapacity;
                     
-                    // Recalculating capped totals correctly factoring back the selector values
                     trueDispensedEnergy = maxNetEnergy * lossMultiplier;
                     trueHours = trueDispensedEnergy / chargerSpeed;
                     
-                    const actualCappedCost = trueDispensedEnergy * rate;
+                    const actualCappedCost = Math.round(trueDispensedEnergy * rate * 100) / 100;
                     labelCostOrSoc.innerHTML = `Target SoC <span class="text-xs text-rose-400 block font-normal">(Capped at 100% Full, Spend: ₱${actualCappedCost.toFixed(2)})</span>`;
                 }
-
+        
                 const finalNetEnergyAdded = trueDispensedEnergy / lossMultiplier;
                 renderCalculatedDOM(finalNetEnergyAdded, `${projectedFinalSoC.toFixed(1)}%`, trueHours);
             }
