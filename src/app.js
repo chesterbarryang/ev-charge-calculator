@@ -370,35 +370,24 @@ window.toggleMaintenanceModal = function(show) {
 // Form Handler B: Registers a whole new independent network configuration space
 window.commitCustomNetworkCompany = function() {
     const name = document.getElementById('m-net-name').value.trim();
-    const rate = parseFloat(document.getElementById('m-net-rate').value);
+    const rateAc = parseFloat(document.getElementById('m-net-rate-ac').value);
+    const rateDc = parseFloat(document.getElementById('m-net-rate-dc').value);
 
-    if (!name || isNaN(rate)) { alert("Please input the network company parameters accurately."); return; }
+    if (!name || isNaN(rateAc) || isNaN(rateDc)) { alert("Please provide company name and both AC/DC rates."); return; }
 
     const networkKey = name.toLowerCase().replace(/\s+/g, '_');
     const customNetworks = JSON.parse(localStorage.getItem('ev_custom_networks') || '{}');
     
-    // Prevent overriding default core profiles
-    if (networkKey === 'home' || networkKey === 'evro') {
-        alert("Cannot overwrite baseline default platform parameters.");
-        return;
-    }
-
-    // Initialize the entry structure without destroying any existing child speeds if already instantiated
-    if (!customNetworks[networkKey]) {
-        customNetworks[networkKey] = {
-            name: name,
-            isCommercial: true,
-            defaultRate: rate,
-            speeds: []
-        };
-    } else {
-        customNetworks[networkKey].defaultRate = rate; // Update the rate parameter safely
-    }
+    customNetworks[networkKey] = {
+        name: name,
+        isCommercial: true,
+        typeRates: { AC: rateAc, DC: rateDc },
+        speeds: []
+    };
 
     localStorage.setItem('ev_custom_networks', JSON.stringify(customNetworks));
-    alert(`Success: Created independent commercial profile for ${name}.`);
-    populateMaintenanceNetworkDropdown();
-    renderNetworkDropdown(); // Rebuild the dashboard list dynamically
+    alert(`Profile created for ${name} with split-rate billing.`);
+    location.reload();
 };
 
 // Form Handler C: Appends custom speeds to ANY company profile matching the index registry
