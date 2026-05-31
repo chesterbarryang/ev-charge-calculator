@@ -462,3 +462,37 @@ window.addEventListener('DOMContentLoaded', () => {
     renderNetworkSpeeds();
     calculateSession();
 });
+
+function changeVehicleProfile() {
+    // 1. Save current UI settings to the old profile before switching
+    AppState.saveProfile({
+        network: networkSelect.value,
+        rate: parseFloat(rateInput.value),
+        efficiency: efficiencySelect.value
+    });
+
+    // 2. Update brand/model
+    AppState.vehicleBrand = brandSelect.value;
+    // (Ensure you retrieve model logic here based on your dropdown mapping)
+    
+    // 3. Load the new profile settings
+    const newSettings = AppState.getActiveSettings();
+    networkSelect.value = newSettings.network;
+    rateInput.value = newSettings.rate;
+    efficiencySelect.value = newSettings.efficiency;
+
+    // 4. Trigger UI refresh
+    renderNetworkSpeeds();
+    calculateSession();
+}
+
+// Ensure listeners trigger the save whenever a user changes a setting
+[networkSelect, rateInput, efficiencySelect].forEach(el => {
+    el.addEventListener('change', () => {
+        AppState.saveProfile({
+            network: networkSelect.value,
+            rate: parseFloat(rateInput.value),
+            efficiency: efficiencySelect.value
+        });
+    });
+});
