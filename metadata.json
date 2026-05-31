@@ -1,0 +1,6 @@
+{
+  "name": "EV Charge Calculator",
+  "description": "Smart interactive EV Charging estimation, battery health warnings, timer alarms, and custom vehicle/network registry maintenance workspace",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
