@@ -341,3 +341,121 @@ function resetOutputs() {
     btnTimerToggle.className = "w-full bg-slate-800 text-slate-500 font-bold text-sm p-3.5 rounded-xl opacity-50 cursor-not-allowed";
     btnTimerToggle.disabled = true;
 }
+
+// Function to update the company dropdown picker inside the maintenance screen itself
+function populateMaintenanceNetworkDropdown() {
+    const targetSelect = document.getElementById('m-net-target');
+    if (!targetSelect) return;
+    
+    targetSelect.innerHTML = '';
+    const networksDb = getMergedNetworks();
+    
+    Object.keys(networksDb).forEach(netKey => {
+        const opt = document.createElement('option');
+        opt.value = netKey;
+        opt.textContent = networksDb[netKey].name;
+        targetSelect.appendChild(opt);
+    });
+}
+
+// Intercept window toggle to ensure selection indices are built fresh
+const originalToggleMaintenanceModal = window.toggleMaintenanceModal;
+window.toggleMaintenanceModal = function(show) {
+    if (show) {
+        populateMaintenanceNetworkDropdown();
+    }
+    document.getElementById('maintenance-modal').classList.toggle('hidden', !show);
+};
+
+// Form Handler B: Registers a whole new independent network configuration space
+window.commitCustomNetworkCompany = function() {
+    const name = document.getElementById('m-net-name').value.trim();
+    const rate = parseFloat(document.getElementById('m-net-rate').value);
+
+    if (!name || isNaN(rate)) { alert("Please input the network company parameters accurately."); return; }
+
+    const networkKey = name.toLowerCase().replace(/\s+/g, '_');
+    const customNetworks = JSON.parse(localStorage.getItem('ev_custom_networks') || '{}');
+    
+    // Prevent overriding default core profiles
+    if (networkKey === 'home' || networkKey === 'evro') {
+        alert("Cannot overwrite baseline default platform parameters.");
+        return;
+    }
+
+    // Initialize the entry structure without destroying any existing child speeds if already instantiated
+    if (!customNetworks[networkKey]) {
+        customNetworks[networkKey] = {
+            name: name,
+            isCommercial: true,
+            defaultRate: rate,
+            speeds: []
+        };
+    } else {
+        customNetworks[networkKey].defaultRate = rate; // Update the rate parameter safely
+    }
+
+    localStorage.setItem('ev_custom_networks', JSON.stringify(customNetworks));
+    alert(`Success: Created independent commercial profile for ${name}.`);
+    populateMaintenanceNetworkDropdown();
+    renderNetworkDropdown(); // Rebuild the dashboard list dynamically
+};
+
+// Form Handler C: Appends custom speeds to ANY company profile matching the index registry
+window.commitCustomSpeedOutlet = function() {
+    const networkKey = document.getElementById('m-net-target').value;
+    const label = document.getElementById('m-speed-label').value.trim();
+    const kw = parseFloat(document.getElementById('m-speed-kw').value);
+    const currentType = document.getElementById('m-speed-type').value;
+
+    if (!label || isNaN(kw)) { alert("Please specify the terminal specifications completely."); return; }
+
+    const customNetworks = JSON.parse(localStorage.getItem('ev_custom_networks') || '{}');
+    const baseNetworks = getMergedNetworks();
+
+    // If the targeted node doesn't have an active localStorage tracking mirror yet, port it from baseline database first
+    if (!customNetworks[networkKey]) {
+        customNetworks[networkKey] = JSON.parse(JSON.stringify(baseNetworks[networkKey]));
+    }
+    
+    const uniqueId = `custom_${label.toLowerCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-4)}`;
+    customNetworks[networkKey].speeds.push({
+        id: uniqueId,
+        powerKw: kw,
+        type: currentType,
+        label: `${label} (${kw}kW ${currentType})`
+    });
+
+    localStorage.setItem('ev_custom_networks', JSON.stringify(customNetworks));
+    alert(`Terminal saved! Added ${kw} kW outlet option underneath ${baseNetworks[networkKey].name}.`);
+    location.reload(); // Hard cycle to refresh cross-linked script dependencies safely
+};
+
+// Dashboard Network list builder: Replaces hardcoded options with live merged profiles
+function renderNetworkDropdown() {
+    const mainNetworkSelect = document.getElementById('charger-network');
+    if (!mainNetworkSelect) return;
+
+    const currentSelection = mainNetworkSelect.value || AppState.network;
+    mainNetworkSelect.innerHTML = '';
+    
+    const networksDb = getMergedNetworks();
+    Object.keys(networksDb).forEach(netKey => {
+        const opt = document.createElement('option');
+        opt.value = netKey;
+        opt.textContent = networksDb[netKey].name;
+        if (netKey === currentSelection) opt.selected = true;
+        mainNetworkSelect.appendChild(opt);
+    });
+}
+
+// Hook network builder into the initialization stream inside DOMContentLoaded
+window.addEventListener('DOMContentLoaded', () => {
+    initTime();
+    renderNetworkDropdown(); // Dynamically construct main panel view entries
+    setupStaticEventListeners();
+    syncUIPresets();
+    renderVehicleDropdown();
+    renderNetworkSpeeds();
+    calculateSession();
+});
