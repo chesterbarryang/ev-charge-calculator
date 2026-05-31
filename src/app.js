@@ -170,6 +170,13 @@ function renderNetworkSpeeds() {
 function calculateSession() {
     if (AppState.isTimerRunning) return;
 
+    const currentSoc = parseFloat(currentSocInput.value) || 0;
+    const selectedOption = chargerSpeedSelect.options[chargerSpeedSelect.selectedIndex];
+    const chargerSpeed = parseFloat(chargerSpeedSelect.value) || 3.5;
+    const chargerType = selectedOption ? selectedOption.dataset.type : "AC";
+    
+    const vehiclesDb = getMergedVehicles();
+    const activeVehicle = vehiclesDb[AppState.vehicleBrand].models[AppState.vehicleModel];
     // Inside calculateSession()
     const networksDb = getMergedNetworks();
     const networkData = networksDb[AppState.network];
@@ -178,13 +185,6 @@ function calculateSession() {
     const activeRate = networkData.typeRates[chargerType] || networkData.typeRates.AC; 
     rateInput.value = activeRate; // Optional: update the UI input so the user sees the auto-switch
     const rate = activeRate;
-    const selectedOption = chargerSpeedSelect.options[chargerSpeedSelect.selectedIndex];
-    const chargerSpeed = parseFloat(chargerSpeedSelect.value) || 3.5;
-    const chargerType = selectedOption ? selectedOption.dataset.type : "AC";
-    
-    const vehiclesDb = getMergedVehicles();
-    const activeVehicle = vehiclesDb[AppState.vehicleBrand].models[AppState.vehicleModel];
-    const rate = parseFloat(rateInput.value) || 0;
     const lossMultiplier = parseFloat(efficiencySelect.value);
     const targetVal = parseFloat(targetValueInput.value) || 0;
 
