@@ -64,7 +64,7 @@
             </div>
         </div>
 
-        <!-- Time Optimization Configuration Block (NEW) -->
+        <!-- Time Optimization Configuration Block -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-xl">
             <div class="flex justify-between items-center">
                 <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Session Start Time</label>
@@ -137,6 +137,13 @@
                     <p id="result-clock" class="text-xl font-black text-emerald-400 tracking-tight">--</p>
                 </div>
             </div>
+
+            <!-- New Integrated Zero-Clutter Timer Container Control Block -->
+            <div id="timer-control-block" class="pt-2">
+                <button id="btn-timer-toggle" onclick="toggleActiveTimer()" class="w-full bg-emerald-500 text-slate-950 font-bold text-sm p-3.5 rounded-xl transition duration-200 opacity-50 cursor-not-allowed" disabled>
+                    ⏱️ Start Session Alarm Clock
+                </button>
+            </div>
         </div>
     </div>
 
@@ -153,6 +160,7 @@
         const dynamicContainer = document.getElementById('dynamic-target-container');
         const errorMsg = document.getElementById('error-msg');
         const lfpBanner = document.getElementById('lfp-guidance-banner');
+        const btnTimerToggle = document.getElementById('btn-timer-toggle');
 
         const resultEnergy = document.getElementById('result-energy');
         const labelCostOrSoc = document.getElementById('label-cost-or-soc');
@@ -162,8 +170,17 @@
 
         let targetSocValue = 80;
         let budgetAmountValue = 500;
+        
+        // Native Alarm State Tracking Variables
+        let timerInterval = null;
+        let audioContext = null;
+        let alarmOscillator = null;
+        let alarmInterval = null;
+        let targetTotalSecondsLeft = 0;
+        let isTimerRunning = false;
 
         function setToCurrentTime() {
+            if(isTimerRunning) return; // Prevent overwriting active countdown anchors
             const now = new Date();
             const hours = now.getHours().toString().padStart(2, '0');
             const minutes = now.getMinutes().toString().padStart(2, '0');
@@ -172,13 +189,16 @@
         }
 
         function setMode(mode) {
+            if (isTimerRunning) return; 
             currentMode = mode;
+            const bSoc = document.getElementById('btn-soc');
+            const bBud = document.getElementById('btn-budget');
             if (mode === 'soc') {
-                document.getElementById('btn-soc').className = "flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold transition-all duration-200 cursor-pointer";
-                document.getElementById('btn-budget').className = "flex-1 py-2 text-sm rounded-lg text-slate-400 transition-all duration-200 cursor-pointer";
+                bSoc.className = "flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold transition-all duration-200 cursor-pointer";
+                bBud.className = "flex-1 py-2 text-sm rounded-lg text-slate-400 transition-all duration-200 cursor-pointer";
             } else {
-                document.getElementById('btn-soc').className = "flex-1 py-2 text-sm rounded-lg text-slate-400 transition-all duration-200 cursor-pointer";
-                document.getElementById('btn-budget').className = "flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold transition-all duration-200 cursor-pointer";
+                bSoc.className = "flex-1 py-2 text-sm rounded-lg text-slate-400 transition-all duration-200 cursor-pointer";
+                bBud.className = "flex-1 py-2 text-sm rounded-lg bg-emerald-500 text-slate-950 font-semibold transition-all duration-200 cursor-pointer";
             }
             renderDynamicInputs();
             calculate();
@@ -229,17 +249,21 @@
         }
 
         currentSocInput.addEventListener('input', (e) => {
+            if(isTimerRunning) return;
             let val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
             sliderCurrent.value = val;
             calculate();
         });
         sliderCurrent.addEventListener('input', (e) => {
+            if(isTimerRunning) return;
             currentSocInput.value = e.target.value;
             calculate();
         });
 
         [chargerTypeSelect, rateInput, efficiencySelect, plugTimeInput].forEach(element => {
-            element.addEventListener('input', calculate);
+            element.addEventListener('input', () => {
+                if(!isTimerRunning) calculate();
+            });
         });
 
         function updateLFPMetrics(finalEstimatedSoC) {
@@ -253,12 +277,17 @@
         }
 
         function calculate() {
+            if (isTimerRunning) return;
+
             const currentSoc = parseFloat(currentSocInput.value) || 0;
             const chargerSpeed = parseFloat(chargerTypeSelect.value);
             const rate = parseFloat(rateInput.value) || 0;
             const lossMultiplier = parseFloat(efficiencySelect.value);
 
             errorMsg.classList.add('hidden');
+            btnTimerToggle.className = "w-full bg-emerald-500 text-slate-950 font-bold text-sm p-3.5 rounded-xl transition duration-200 cursor-pointer hover:bg-emerald-400";
+            btnTimerToggle.disabled = false;
+            btnTimerToggle.textContent = "⏱️ Start Session Alarm Clock";
 
             let estimatedHours = 0;
             let targetSoCResult = currentSoc;
@@ -320,6 +349,8 @@
             updateLFPMetrics(targetSoCResult);
 
             const totalMinutes = Math.round(estimatedHours * 60);
+            targetTotalSecondsLeft = totalMinutes * 60; // Map directly into code tracking layers
+
             const hours = Math.floor(totalMinutes / 60);
             const minutes = totalMinutes % 60;
             
@@ -328,13 +359,13 @@
             timeString += `${minutes}m`;
             resultTime.textContent = timeString;
 
-            // Calculate "Ready At" relative to the user-defined Session Start Time
             const plugTimeValue = plugTimeInput.value || "00:00";
             const [startHours, startMinutes] = plugTimeValue.split(':').map(Number);
             
             const targetDate = new Date();
             targetDate.setHours(startHours);
             targetDate.setMinutes(startMinutes + totalMinutes);
+            targetDate.setSeconds(0);
             
             let clockHours = targetDate.getHours();
             const clockMinutes = targetDate.getMinutes().toString().padStart(2, '0');
@@ -343,6 +374,76 @@
             clockHours = clockHours ? clockHours : 12; 
             
             resultClock.textContent = `${clockHours}:${clockMinutes} ${ampm}`;
+        }
+
+        // Native Browser Audio Alert Engine Implementation 
+        function toggleActiveTimer() {
+            if (isTimerRunning) {
+                // Cancel active timers manually
+                clearInterval(timerInterval);
+                stopAudioAlarmEngine();
+                isTimerRunning = false;
+                calculate();
+            } else {
+                if (targetTotalSecondsLeft <= 0) return;
+                
+                // Initialize web sound contexts to bypass browser autoplay protections
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                isTimerRunning = true;
+                btnTimerToggle.textContent = "🛑 Cancel Session Alarm";
+                btnTimerToggle.className = "w-full bg-rose-600 text-slate-100 font-bold text-sm p-3.5 rounded-xl transition duration-200 cursor-pointer hover:bg-rose-500";
+
+                timerInterval = setInterval(() => {
+                    targetTotalSecondsLeft--;
+
+                    if (targetTotalSecondsLeft <= 0) {
+                        clearInterval(timerInterval);
+                        triggerAudioAlarmEngine();
+                    } else {
+                        // Dynamically countdown in results duration window area
+                        const h = Math.floor(targetTotalSecondsLeft / 3600);
+                        const m = Math.floor((targetTotalSecondsLeft % 3600) / 60);
+                        const s = targetTotalSecondsLeft % 60;
+                        resultTime.textContent = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s left`;
+                    }
+                }, 1000);
+            }
+        }
+
+        function triggerAudioAlarmEngine() {
+            btnTimerToggle.textContent = "🔕 Silence Alarm Notification";
+            btnTimerToggle.className = "w-full bg-amber-500 text-slate-950 font-black text-sm p-4 rounded-xl animate-pulse cursor-pointer";
+            resultTime.textContent = "⚡ CHARGING COMPLETE!";
+
+            // Loop an synth beep cadence using standard browser audio frequencies
+            alarmInterval = setInterval(() => {
+                if (!audioContext) return;
+                
+                let osc = audioContext.createOscillator();
+                let gain = audioContext.createGain();
+                
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, audioContext.currentTime); // High clear A5 note frequency 
+                
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4); // Clean ring drop
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.start();
+                osc.stop(audioContext.currentTime + 0.5);
+            }, 1000);
+        }
+
+        function stopAudioAlarmEngine() {
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
         }
 
         function renderCalculatedDOM(energy, alternateCostSocText) {
@@ -355,9 +456,10 @@
             resultCostOrSoc.textContent = `₱ --`;
             resultTime.textContent = `--`;
             resultClock.textContent = `--`;
+            btnTimerToggle.className = "w-full bg-slate-800 text-slate-500 font-bold text-sm p-3.5 rounded-xl transition duration-200 opacity-50 cursor-not-allowed";
+            btnTimerToggle.disabled = true;
         }
 
-        // Initialize time field with current clock instantly on page boot
         setToCurrentTime();
         setMode('soc');
     </script>
